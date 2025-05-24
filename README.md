@@ -5,18 +5,16 @@ A modular, easy-to-extend WhatsApp bot built on Baileys (Node.js) with:
 - Role-based command permissions  
 - Alias support for commands  
 - Cooldowns per command per user  
-- Group-only and private-only command control  
+- Group-only bot
 - Reply and reaction handlers  
 - Dynamic prefix support  
-- Unified message helper functions (reply, unsend, stream)  
 
 ---
 
 ## Features
 
-- **Auto command loading:** Every `.js` file inside `commands/` is treated as a command automatically.  
-- **Command metadata:** Each command exports metadata like `name`, `aliases`, `version`, `role`, `description`, `cooldown`, etc.  
-- **Role-based access control:** Roles range from everyone to admin and superadmin.  
+- **Command metadata:** Each command exports metadata like `name`, `aliases`, `version`, `role`, `description`, `cooldown`, `isPrefix`.  
+- **Role-based access control:** Roles range from everyone to admin and dev/superadmin.  
 - **Cooldown system:** Per-user cooldowns for commands to prevent spam.  
 - **Group and private chat control:** Commands can be limited to groups or private chats only.  
 - **Reply-based interactions:** Commands can listen to user replies, enabling multi-step conversations or games.  
@@ -66,13 +64,13 @@ module.exports = {
   name: "ping",
   aliases: ["p"],
   version: "1.0",
-  author: "Jarif",
+  author: "JARiF",
   cooldown: 5,           // seconds
-  role: 0,               // 0 = everyone, 1 = admin, 2 = superadmin
+  role: 0,               // 0 = everyone, 1 = admin, 2 = superadmin/dev
   description: "Ping the bot to check if it's alive",
   group: false,          // true if command is group-only
   private: false,        // true if command is private-only
-  execute: async (message, args, context) => {
+  zayn: async function(message, args, context) => {
     await message.reply("Pong!");
   }
 };
