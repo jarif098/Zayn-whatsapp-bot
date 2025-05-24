@@ -99,7 +99,7 @@ module.exports = {
 5. Click **Create Web Service**.
 
 ---
-### Step 1: Handling WhatsApp QR Code for Login
+### Handling WhatsApp QR Code for Login
 
 Render runs your bot in the cloud where you cannot scan a QR code interactively like local development. To handle this:
 
