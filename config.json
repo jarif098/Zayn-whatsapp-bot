@@ -1,14 +1,14 @@
 {
   "prefix": "/",
   "botName": "Zayn",
-  "devsPhoneNumber": "8801839592068@s.whatsapp.net",
+  "devsPhoneNumber": "your-phone-number@s.whatsapp.net",
 
   "rolesARE": "2 for admin, 3 for developer",
   "roles": {
     "2": [],
     "3": [
-      "64905864577195@lid",
-      "8732171833390@lid"
+      "",
+      ""
     ]
   },
 
