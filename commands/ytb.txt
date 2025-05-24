@@ -1,0 +1,150 @@
+const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
+
+module.exports = {
+  name: 'ytb',
+  aliases: ['youtube', 'ytdl'],
+  version: '1.0',
+  author: 'JARiF',
+  role: 0,
+  description: 'YouTube audio/video downloader with selection menu',
+  guide: `
+Usage:
+ytb audio <query> or ytb -a <query> - search audio
+ytb video <query> or ytb -v <query> - search video
+Then reply with the number (1-5) to select and download.
+  `,
+
+  async execute({ sock, msg, args, zaynReply }) {
+    const chatId = msg.key.remoteJid;
+
+    if (args.length === 0) {
+      return await sock.sendMessage(chatId, { text: 'Please provide a search query.\nUsage: !ytb audio <query> or !ytb video <query>' }, { quoted: msg });
+    }
+
+    let type = null;
+    if (args[0].toLowerCase() === 'audio' || args[0].toLowerCase() === '-a') {
+      type = 'audio';
+      args.shift();
+    } else if (args[0].toLowerCase() === 'video' || args[0].toLowerCase() === '-v') {
+      type = 'video';
+      args.shift();
+    } else {
+      return await sock.sendMessage(chatId, { text: 'Please specify type audio (-a) or video (-v).\nUsage: !ytb audio <query> or !ytb video <query>' }, { quoted: msg });
+    }
+
+    const query = args.join(' ').trim();
+    if (!query) {
+      return await sock.sendMessage(chatId, { text: 'Please provide a search query after the type.' }, { quoted: msg });
+    }
+
+    try {
+      const apiUrl = `https://noobs-api.top/dipto/ytFullSearch?songName=${encodeURIComponent(query)}`;
+      const response = await axios.get(apiUrl);
+      const results = response.data;
+
+      if (!Array.isArray(results) || results.length === 0) {
+        return await sock.sendMessage(chatId, { text: `No results found for "${query}".` }, { quoted: msg });
+      }
+
+      const videos = results.slice(0, 5);
+
+      let listMsg = `🎵 *YouTube ${type === 'audio' ? 'Audio' : 'Video'} Search Results for:* ${query}\n\n`;
+      videos.forEach((video, i) => {
+        listMsg += `*${i + 1}.* ${video.title}\n`;
+        listMsg += `   ⏱️ ${video.time} | 📺 ${video.channel.name}\n`;
+      });
+      listMsg += '_Reply with the number (1-5) to select and download._';
+
+      const sentMsg = await sock.sendMessage(chatId, { text: listMsg, quoted: msg });
+
+      zaynReply(sentMsg.key.id, async (replyMsg) => {
+        try {
+          if (!replyMsg || !replyMsg.message) return;
+
+          let body = '';
+          if (replyMsg.message.conversation) {
+            body = replyMsg.message.conversation;
+          } else if (replyMsg.message.extendedTextMessage?.text) {
+            body = replyMsg.message.extendedTextMessage.text;
+          } else {
+            await sock.sendMessage(chatId, { text: '❌ Please reply with your selection as text.' }, { quoted: replyMsg });
+            return;
+          }
+
+          const choice = parseInt(body.trim());
+          if (isNaN(choice) || choice < 1 || choice > videos.length) {
+            return await sock.sendMessage(chatId, { text: '❌ Invalid selection. Please reply with a number between 1 and 5.' }, { quoted: replyMsg });
+          }
+
+          const selectedVideo = videos[choice - 1];
+
+          await sock.sendMessage(chatId, { text: `Fetching your ${type} from:\n${selectedVideo.title}` }, { quoted: replyMsg });
+
+          const format = type === 'audio' ? 'mp3' : 'mp4';
+          const dlApiUrl = `https://noobs-api.top/dipto/ytDl3?link=${selectedVideo.id}&format=${format}&quality=3`;
+
+          const dlRes = await axios.get(dlApiUrl);
+          const dlData = dlRes.data;
+
+          if (!dlData || !dlData.downloadLink) {
+            return await sock.sendMessage(chatId, { text: 'Download info not found.' }, { quoted: replyMsg });
+          }
+
+          const downloadUrl = dlData.downloadLink;
+          const tmpFileName = `${selectedVideo.title.replace(/[<>:"\/\\|?*\x00-\x1F]/g, '').slice(0, 40)}.${format}`;
+          const tmpFilePath = path.join(os.tmpdir(), tmpFileName);
+
+          const writer = fs.createWriteStream(tmpFilePath);
+
+         const responseStream = await axios({
+  url: downloadUrl,
+  method: 'GET',
+  responseType: 'stream',
+  headers: {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
+  }
+});
+
+          responseStream.data.pipe(writer);
+
+          await new Promise((resolve, reject) => {
+            writer.on('finish', resolve);
+            writer.on('error', reject);
+          });
+
+          if (type === 'audio') {
+            await sock.sendMessage(chatId, {
+              audio: { url: tmpFilePath },
+              mimetype: 'audio/mpeg',
+              fileName: tmpFileName,
+              ptt: false,
+              caption: selectedVideo.title,
+            }, { quoted: replyMsg });
+          } else {
+            await sock.sendMessage(chatId, {
+              video: { url: tmpFilePath },
+              mimetype: 'video/mp4',
+              fileName: tmpFileName,
+              caption: selectedVideo.title,
+            }, { quoted: replyMsg });
+          }
+
+          fs.unlink(tmpFilePath, (err) => {
+            if (err) console.error('Failed to delete temp file:', err);
+          });
+
+        } catch (err) {
+          console.error('Download/send error:', err);
+          await sock.sendMessage(chatId, { text: 'Failed to download/send the file. Please try again later.' }, { quoted: replyMsg });
+        }
+      });
+
+    } catch (error) {
+      console.error('Search error:', error);
+      await sock.sendMessage(chatId, { text: 'Failed to search YouTube. Please try again later.' }, { quoted: msg });
+    }
+  }
+};

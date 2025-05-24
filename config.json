@@ -1,0 +1,25 @@
+{
+  "prefix": "/",
+  "botName": "Zayn",
+  "devsPhoneNumber": "8801839592068@s.whatsapp.net",
+
+  "rolesARE": "2 for admin, 3 for developer",
+  "roles": {
+    "2": [],
+    "3": [
+      "64905864577195@lid",
+      "8732171833390@lid"
+    ]
+  },
+
+  "CoolDownForDev": false,
+  "commentCoolDownForDev": "If true, cooldown will apply to devs too",
+
+  "noPrefix": false,
+  "commentNoPrefix": "If true, commands can be used without a prefix",
+
+  "support": "https://chat.whatsapp.com/HaizD65XjYy6mTaUCvK8cs",
+
+  "storeType": "SQLITE",
+  "commentForStoreType": "USE 'JSON', 'MONGO' or 'SQLITE'"
+}
