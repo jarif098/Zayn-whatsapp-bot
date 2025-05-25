@@ -42,7 +42,7 @@ A modular, easy-to-extend WhatsApp bot built on Baileys (Node.js) with:
 2. Install dependencies:
 
     ```bash
-    npm install
+    npm install --force
     ```
 
 3. Run the bot:
