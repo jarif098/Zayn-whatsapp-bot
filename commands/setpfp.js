@@ -39,14 +39,11 @@ module.exports = {
         .jpeg()
         .toBuffer();
 
-      // Save resized image temporarily
-      const filePath = path.join(__dirname, "../tmp-pfp.jpg");
+      const filePath = path.join(__dirname, "../tmp/tmp-pfp.jpg");
       fs.writeFileSync(filePath, resizedBuffer);
 
-      // Update profile picture
       await sock.updateProfilePicture(sock.user.id, resizedBuffer);
 
-      // Delete temp file
       fs.unlinkSync(filePath);
 
       await sock.sendMessage(
