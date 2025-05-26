@@ -35,8 +35,8 @@ A modular, easy-to-extend WhatsApp bot built on Baileys (Node.js) with:
 1. Clone the repo:
 
     ```bash
-    git clone https://github.com/yourusername/zayn-whatsapp-bot.git
-    cd zayn-whatsapp-bot
+    git clone https://github.com/jarif098/Zayn-whatsapp-bot.git
+    cd Zayn-whatsapp-bot
     ```
 
 2. Install dependencies:
