@@ -1,18 +1,17 @@
-const Canvas = require('canvas');
-const axios = require('axios');
+const { createCanvas, loadImage, registerFont } = require('canvas');
+const path = require('path');
 
 module.exports = {
   name: 'rank',
   version: "1.0",
-  author: "JARiF",
-  description: 'Show your rank, level, and message count with a cyberpunk style rank card',
-  usage: 'rank [@user]',
-  aliases: ['level', 'lvl'],
-  role: 0,
+  author: "TawsiN | JARiF",
+  description: 'Generate rank card with level and XP',
+  usage: 'l [@user]',
+  role: 3,
   cooldown: 5,
   category: 'UTILITY',
 
-  async execute({ sock, msg, userData }) {
+  async zayn({ sock, msg, userData }) {
     try {
       const groupId = msg.key.remoteJid;
       const senderJid = msg.key.participant || msg.key.remoteJid;
@@ -22,157 +21,110 @@ module.exports = {
       const groupMeta = await sock.groupMetadata(groupId);
       const participants = groupMeta.participants || [];
 
-      const users = participants.map(p => {
+      const users = await Promise.all(participants.map(async (p) => {
         const id = `${groupId}_${p.id}`;
-        const user = userData.find(u => u.id === id);
+        const user = userData.find((u) => u.id === id);
+        let pushName = p.id.split('@')[0];
+
+        try {
+          const contact = await sock.onWhatsApp(p.id);
+          if (contact?.[0]?.notify) pushName = contact[0].notify;
+        } catch {}
+
         return {
           jid: p.id,
           msgCount: user?.data?.msgCount || 0,
-          pushName: p.notify || p.id.split('@')[0],
+          pushName
         };
-      });
+      }));
 
       users.sort((a, b) => b.msgCount - a.msgCount);
 
-      const rankIndex = users.findIndex(u => u.jid === targetJid);
-      const userRank = rankIndex !== -1 ? rankIndex + 1 : "N/A";
+      const rankIndex = users.findIndex((u) => u.jid === targetJid);
       const userDataEntry = users[rankIndex] || {
         msgCount: 0,
         pushName: targetJid.split('@')[0],
+        jid: targetJid,
       };
 
+      const userRank = rankIndex !== -1 ? rankIndex + 1 : 1;
       const level = Math.floor(Math.sqrt(userDataEntry.msgCount / 10));
+      const currentXP = userDataEntry.msgCount;
+      const requiredXP = (level + 1) * 500;
 
-      let avatarImg;
+      let avatarUrl;
       try {
-        let avatarUrl = await sock.profilePictureUrl(targetJid, 'image').catch(() => null);
-        if (!avatarUrl || typeof avatarUrl !== 'string') {
-          avatarUrl = 'https://i.imgur.com/ZXBtVw7.png';
-        }
-
-        const res = await axios.get(avatarUrl, { responseType: 'arraybuffer' });
-        const buffer = Buffer.from(res.data, 'binary');
-        avatarImg = await Canvas.loadImage(buffer);
-      } catch (err) {
-        console.warn('⚠️ Failed to load profile image, using fallback.', err.message);
-        const fallback = await axios.get('https://i.imgur.com/ZXBtVw7.png', { responseType: 'arraybuffer' });
-        const buffer = Buffer.from(fallback.data, 'binary');
-        avatarImg = await Canvas.loadImage(buffer);
+        avatarUrl = await sock.profilePictureUrl(targetJid, 'image');
+      } catch {
+        avatarUrl = 'https://i.imgur.com/ZXBtVw7.png';
       }
 
-      const width = 700;
-      const height = 300;
-      const canvas = Canvas.createCanvas(width, height);
-      const ctx = canvas.getContext('2d');
+const canvas = createCanvas(1000, 300);
+const ctx = canvas.getContext('2d');
 
-      const bgGradient = ctx.createLinearGradient(0, 0, width, height);
-      bgGradient.addColorStop(0, '#0f0c29');
-      bgGradient.addColorStop(0.5, '#302b63');
-      bgGradient.addColorStop(1, '#24243e');
-      ctx.fillStyle = bgGradient;
-      ctx.fillRect(0, 0, width, height);
+ctx.fillStyle = '#000000';
+ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      function drawNeonBubble(x, y, radius, color) {
-        const glow = ctx.createRadialGradient(x, y, radius * 0.3, x, y, radius);
-        glow.addColorStop(0, color);
-        glow.addColorStop(1, 'transparent');
-        ctx.fillStyle = glow;
-        ctx.beginPath();
-        ctx.arc(x, y, radius, 0, Math.PI * 2);
-        ctx.fill();
-      }
+const avatar = await loadImage(avatarUrl);
+const avatarX = 70;
+const avatarY = 70;
+const avatarSize = 160;
+const avatarRadius = 80;
 
-      const bubbleColors = ['#ff00ff', '#00ffff', '#ff0080', '#00ffcc', '#ff0066'];
-      for (let i = 0; i < 20; i++) {
-        const x = Math.random() * width;
-        const y = Math.random() * height;
-        const r = 15 + Math.random() * 20;
-        const color = bubbleColors[Math.floor(Math.random() * bubbleColors.length)];
-        drawNeonBubble(x, y, r, color);
-      }
+const neonColors = ['#00ffff', '#ff00ff', '#39ff14', '#ff4500', '#ffcc00'];
+const color = neonColors[Math.floor(Math.random() * neonColors.length)];
 
-      const avatarSize = 128;
-      const avatarX = 40;
-      const avatarY = (height / 2) - (avatarSize / 2);
+ctx.beginPath();
+ctx.arc(150, 150, avatarRadius + 6, 0, Math.PI * 2);
+ctx.strokeStyle = color;
+ctx.lineWidth = 8;
+ctx.shadowColor = color;
+ctx.shadowBlur = 20;
+ctx.stroke();
+ctx.closePath();
 
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
-      ctx.closePath();
-      ctx.clip();
-      ctx.drawImage(avatarImg, avatarX, avatarY, avatarSize, avatarSize);
-      ctx.restore();
+ctx.save();
+ctx.beginPath();
+ctx.arc(150, 150, avatarRadius, 0, Math.PI * 2);
+ctx.closePath();
+ctx.clip();
+ctx.drawImage(avatar, avatarX, avatarY, avatarSize, avatarSize);
+ctx.restore();
 
-      ctx.shadowColor = '#00fff7';
-      ctx.shadowBlur = 15;
-      ctx.lineWidth = 6;
-      ctx.strokeStyle = '#00fff7';
-      ctx.beginPath();
-      ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, (avatarSize / 2) - 3, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.shadowBlur = 0;
+ctx.shadowColor = 'transparent';
+ctx.shadowBlur = 0;
 
-      const textStartX = avatarX + avatarSize + 40;
-      const lineHeight = 45;
+ctx.strokeStyle = color;
+ctx.lineWidth = 4;
+ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
 
-      function neonText(text, x, y, fontSize, color) {
-        ctx.font = `${fontSize}px 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif`;
-        ctx.fillStyle = color;
-        ctx.shadowColor = color;
-        ctx.shadowBlur = 15;
-        ctx.fillText(text, x, y);
-        ctx.shadowBlur = 5;
-        ctx.fillText(text, x, y);
-        ctx.shadowBlur = 0;
-      }
+ctx.fillStyle = color;
+ctx.font = 'bold 32px sans-serif';
+const displayName = msg.pushName;
+ctx.fillText(displayName, 260, 80);
 
-      const centerY = height / 2;
-      const texts = [
-        { text: userDataEntry.pushName, fontSize: 36, color: '#00fff7' },
-        { text: `Rank: #${userRank}`, fontSize: 28, color: '#ff00ff' },
-        { text: `Level: ${level}`, fontSize: 28, color: '#00ff66' },
-        { text: `Messages: ${userDataEntry.msgCount}`, fontSize: 24, color: '#ff6600' },
-      ];
+ctx.font = '24px sans-serif';
+ctx.fillText(`Level: ${level}`, 260, 130);
+ctx.fillText(`XP: ${currentXP} / ${requiredXP}`, 260, 170);
+ctx.fillText(`Rank: #${userRank}`, 260, 210);
 
-      const totalTextHeight = texts.length * lineHeight;
-      let currentY = centerY - (totalTextHeight / 2) + lineHeight;
+ctx.fillStyle = '#333';
+ctx.fillRect(260, 230, 700, 25);
+const progress = Math.min(currentXP / requiredXP, 1);
+ctx.fillStyle = color;
+ctx.fillRect(260, 230, 700 * progress, 25);
 
-      for (const t of texts) {
-        neonText(t.text, textStartX, currentY, t.fontSize, t.color);
-        currentY += lineHeight;
-      }
-
-      const barWidth = 400;
-      const barHeight = 30;
-      const barX = textStartX;
-      const barY = currentY + 10;
-
-      ctx.fillStyle = '#1a0a3a';
-      ctx.fillRect(barX, barY, barWidth, barHeight);
-
-      const maxMsgCount = users[0]?.msgCount || 1;
-      const progress = Math.min(userDataEntry.msgCount / maxMsgCount, 1);
-
-      ctx.shadowColor = '#00ffff';
-      ctx.shadowBlur = 15;
-      ctx.fillStyle = '#00ffff';
-      ctx.fillRect(barX, barY, barWidth * progress, barHeight);
-      ctx.shadowBlur = 0;
-
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = '#00ffff';
-      ctx.strokeRect(barX, barY, barWidth, barHeight);
 
       const buffer = canvas.toBuffer();
       await sock.sendMessage(groupId, {
         image: buffer,
-        caption: `🧬 Rank card for @${targetJid.split('@')[0]}`,
+        caption: `🧬 Rank Card for @${targetJid.split('@')[0]}`,
         mentions: [targetJid],
       }, { quoted: msg });
 
-    } catch (error) {
-      console.error('Rank command error:', error);
-      await sock.sendMessage(msg.key.remoteJid, { text: '❌ Error generating rank card.' }, { quoted: msg });
+    } catch (err) {
+      console.error('Rank card error:', err);
+      await sock.sendMessage(msg.key.remoteJid, { text: '❌ Failed to generate rank card.' }, { quoted: msg });
     }
   }
 };
