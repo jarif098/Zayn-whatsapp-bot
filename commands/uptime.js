@@ -1,5 +1,6 @@
 const os = require("os");
 const process = require("process");
+const pkg = require('../package.json');
 
 module.exports = {
   name: "uptime",
@@ -40,7 +41,7 @@ module.exports = {
 
 
       const botName = "Zayn V1";
-      const botVersion = "1.0.0";
+      const botVersion = pkg.version;
 
       const text = 
         `*${botName}* - Version: ${botVersion}\n` +
