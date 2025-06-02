@@ -1,7 +1,7 @@
 {
   "name": "zayn-whatsapp-bot",
   "author": "jarif098",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "main": "index.js",
   "type": "commonjs",
   "dependencies": {
@@ -11,6 +11,7 @@
     "check-disk-space": "^3.4.0",
     "child_process": "^1.0.2",
     "fs": "^0.0.1-security",
+    "fs-extra": "^11.3.0",
     "link-preview-js": "^3.0.15",
     "mongodb": "^6.16.0",
     "node-fetch": "^3.3.2",
