@@ -1,14 +1,14 @@
 const fs = require('fs');
 const path = require('path');
+const axios = require('axios');
 
 module.exports = {
   name: 'cmd',
   author: 'JARiF',
-  version: "1.0",
-  description: 'Manage commands: install, loadall, load',
+  version: "1.2",
+  description: 'Manage commands: install (from message or raw URL), loadall, load',
   usage: 'cmd <install|loadall|load> [args]',
   role: 3,
-  version: '1.1',
   category: 'UTILITY',
   noPrefix: false,
 
@@ -25,7 +25,9 @@ module.exports = {
       function clearRequireCache(filePath) {
         try {
           delete require.cache[require.resolve(filePath)];
-        } catch {}
+        } catch (err) {
+          console.error('Failed to clear require cache:', err);
+        }
       }
 
       function registerCommand(cmd) {
@@ -52,32 +54,45 @@ module.exports = {
       if (subcmd === 'install') {
         const fileName = args[1];
         if (!fileName || !fileName.endsWith('.js')) {
-          return await message.reply('Usage: cmd install <filename.js> <command code>');
+          return await message.reply('Usage: cmd install <filename.js> <command code or raw URL>');
         }
 
-        let fullText = '';
-        if (message.message?.conversation) fullText = message.message.conversation;
-        else if (message.message?.extendedTextMessage?.text) fullText = message.message.extendedTextMessage.text;
-        else if (message.message?.extendedTextMessage?.contextInfo?.quotedMessage?.conversation) {
-          fullText = message.message.extendedTextMessage.contextInfo.quotedMessage.conversation;
+        const thirdArg = args[2];
+
+        let code;
+        if (thirdArg && (thirdArg.startsWith('http://') || thirdArg.startsWith('https://'))) {
+          try {
+            const response = await axios.get(thirdArg);
+            code = response.data;
+          } catch (err) {
+            return await message.reply(`❌ Failed to fetch from URL.\nReason: ${err.message}`);
+          }
         } else {
-          return await message.reply('❌ Cannot read the full command message.');
-        }
+          let fullText = '';
+          if (message.message?.conversation) fullText = message.message.conversation;
+          else if (message.message?.extendedTextMessage?.text) fullText = message.message.extendedTextMessage.text;
+          else if (message.message?.extendedTextMessage?.contextInfo?.quotedMessage?.conversation) {
+            fullText = message.message.extendedTextMessage.contextInfo.quotedMessage.conversation;
+          } else {
+            return await message.reply('❌ Cannot read the full command message.');
+          }
 
-        const startIdx = fullText.indexOf(fileName);
-        if (startIdx === -1) {
-          return await message.reply('❌ Could not find the filename in the message.');
-        }
+          const startIdx = fullText.indexOf(fileName);
+          if (startIdx === -1) {
+            return await message.reply('❌ Could not find the filename in the message.');
+          }
 
-        const code = fullText.slice(startIdx + fileName.length).trim();
-        if (!code) return await message.reply('❌ No code provided after filename.');
+          code = fullText.slice(startIdx + fileName.length).trim();
+          if (!code) return await message.reply('❌ No code provided after filename.');
+        }
 
         const filePath = path.join(cmdFolder, fileName);
 
         try {
           fs.writeFileSync(filePath, code, 'utf-8');
-        } catch {
-          return await message.reply('❌ Failed to write command file.');
+        } catch (err) {
+          console.error('Write File Error:', err);
+          return await message.reply(`❌ Failed to write command file.\nReason: ${err.message}`);
         }
 
         try {
@@ -90,9 +105,10 @@ module.exports = {
           }
 
           return await message.reply(`✅ Command '${loadedCmd.name}' installed successfully!`);
-        } catch {
+        } catch (err) {
+          console.error('Install Load Error:', err);
           if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-          return await message.reply('❌ Failed to load command. Installation aborted.');
+          return await message.reply(`❌ Failed to load command.\nReason: ${err.message}`);
         }
       }
 
@@ -109,8 +125,9 @@ module.exports = {
             const cmd = require(filePath);
             if (registerCommand(cmd)) loaded++;
             else await message.reply(`❌ Invalid command format: ${file}`);
-          } catch {
-            await message.reply(`❌ Failed to load: ${file}`);
+          } catch (err) {
+            console.error(`LoadAll Error (${file}):`, err);
+            await message.reply(`❌ Failed to load: ${file}\nReason: ${err.message}`);
           }
         }
 
@@ -129,17 +146,19 @@ module.exports = {
           const cmd = require(filePath);
           if (!registerCommand(cmd)) throw new Error('Invalid command format');
           return await message.reply(`✅ Command '${cmdName}' loaded successfully.`);
-        } catch {
-          return await message.reply(`❌ Failed to load command '${cmdName}'.`);
+        } catch (err) {
+          console.error('Load Command Error:', err);
+          return await message.reply(`❌ Failed to load command '${cmdName}'.\nReason: ${err.message}`);
         }
       }
 
       else {
         return await message.reply('❌ Unknown subcommand. Use install, loadall, or load.');
       }
+
     } catch (err) {
-      console.error('CMD Error:', err);
-      await message.reply('❌ An unexpected error occurred.');
+      console.error('CMD Handler Error:', err);
+      await message.reply(`❌ An unexpected error occurred.\nReason: ${err.message}`);
     }
   }
 };
