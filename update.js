@@ -7,7 +7,7 @@ const os = require("os");
 const crypto = require("crypto");
 
 const repoPath = path.resolve(__dirname);
-const backupRoot = path.resolve(repoPath, "../backup");
+const backupRoot = path.resolve(repoPath, "/backup");
 const tempPath = path.join(os.tmpdir(), "zayn-update-temp");
 
 function fetchJSON(url) {
