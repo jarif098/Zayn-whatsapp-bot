@@ -1,7 +1,7 @@
 connected=✅ ZAYN WP BOT PROJECT TURNED ON
 connectionClosed=⚠️ Connection closed. You are logged out.
 scanQr=📱 Scan this QR code to connect.
-unknownCommand=❌ {command} Does not exist. Type {prefix}help to see all the available commands.
+unknownCommand=❌ Command {command} Does not exist. Type {prefix}help to see all the available commands.
 justPrefixTyped=❌ Type {prefix}help to see all available commands.
 noPermission=❌ You don’t have permission to use this command.
 errorExecuting=⚠️ Error executing command: {command}
