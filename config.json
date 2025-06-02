@@ -2,7 +2,7 @@
   "prefix": "/",
   "botName": "Zayn",
   "devsPhoneNumber": "your-phone-number@s.whatsapp.net",
-
+  "port": 6969,
   "rolesARE": "2 for admin, 3 for developer",
   "roles": {
     "2": [],
