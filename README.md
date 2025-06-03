@@ -24,7 +24,7 @@ A modular, easy-to-extend WhatsApp bot built on Baileys (Node.js) with:
 
 ## Prerequisites
 
-- Node.js v16 or higher installed locally (for testing and deployment).  
+- Node.js v20 or higher installed locally (for testing and deployment).  
 - A WhatsApp account to scan the QR code and connect the bot.  
 - A GitHub or GitLab repository with your bot code (optional but recommended for deployment).
 
