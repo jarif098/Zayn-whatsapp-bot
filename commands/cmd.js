@@ -6,7 +6,7 @@ module.exports = {
   name: 'cmd',
   author: 'JARiF',
   version: "1.2",
-  description: 'Manage commands: install (from message or raw URL), loadall, load',
+  description: 'Manage commands: install (from message or raw URL), loadall, load, unload',
   usage: 'cmd <install|loadall|load> [args]',
   role: 3,
   category: 'UTILITY',
@@ -19,7 +19,7 @@ module.exports = {
       const cmdFolder = path.join(__dirname, '..', 'commands');
 
       if (!subcmd) {
-        return await message.reply('Usage: cmd <install|loadall|load> [args]');
+        return await message.reply('Usage: cmd <install|loadall|load|unload> [args]');
       }
 
       function clearRequireCache(filePath) {
@@ -112,48 +112,108 @@ module.exports = {
         }
       }
 
-      else if (subcmd === 'loadall') {
-        if (!commands) return await message.reply('❌ Commands collection unavailable.');
+     else if (subcmd === 'loadall') {
+  if (!commands) return await message.reply('❌ Commands collection unavailable.');
 
-        const files = fs.readdirSync(cmdFolder).filter(f => f.endsWith('.js'));
-        let loaded = 0;
+  const jsFiles = fs.readdirSync(cmdFolder).filter(f => f.endsWith('.js'));
+  const txtFiles = fs.readdirSync(cmdFolder).filter(f => f.endsWith('.txt'));
+  let loaded = 0;
 
-        for (const file of files) {
-          try {
-            const filePath = path.join(cmdFolder, file);
-            clearRequireCache(filePath);
-            const cmd = require(filePath);
-            if (registerCommand(cmd)) loaded++;
-            else await message.reply(`❌ Invalid command format: ${file}`);
-          } catch (err) {
-            console.error(`LoadAll Error (${file}):`, err);
-            await message.reply(`❌ Failed to load: ${file}\nReason: ${err.message}`);
-          }
-        }
+  for (const file of jsFiles) {
+    try {
+      const filePath = path.join(cmdFolder, file);
+      clearRequireCache(filePath);
+      const cmd = require(filePath);
+      if (registerCommand(cmd)) loaded++;
+      else await message.reply(`❌ Invalid command format: ${file}`);
+    } catch (err) {
+      console.error(`LoadAll Error (.js ${file}):`, err);
+      await message.reply(`❌ Failed to load: ${file}\nReason: ${err.message}`);
+    }
+  }
 
-        return await message.reply(`✅ Loaded ${loaded}/${files.length} commands.`);
+  for (const file of txtFiles) {
+    const txtPath = path.join(cmdFolder, file);
+    const jsName = file.replace(/\.txt$/, '.js');
+    const jsPath = path.join(cmdFolder, jsName);
+
+    try {
+      fs.renameSync(txtPath, jsPath);
+      clearRequireCache(jsPath);
+      const cmd = require(jsPath);
+      if (registerCommand(cmd)) loaded++;
+      else {
+        await message.reply(`❌ Invalid command format in renamed: ${jsName}`);
       }
+    } catch (err) {
+      console.error(`LoadAll Error (.txt ${file}):`, err);
+      await message.reply(`❌ Failed to load converted: ${file}\nReason: ${err.message}`);
+    }
+  }
 
-      else if (subcmd === 'load') {
-        const cmdName = args[1];
-        if (!cmdName) return await message.reply('❌ Specify a command name to load.');
+  return await message.reply(`✅ Loaded ${loaded}/${jsFiles.length + txtFiles.length} total command files.`);
+}
 
-        const filePath = path.join(cmdFolder, cmdName + '.js');
-        if (!fs.existsSync(filePath)) return await message.reply('❌ Command file not found.');
 
-        try {
-          clearRequireCache(filePath);
-          const cmd = require(filePath);
-          if (!registerCommand(cmd)) throw new Error('Invalid command format');
-          return await message.reply(`✅ Command '${cmdName}' loaded successfully.`);
-        } catch (err) {
-          console.error('Load Command Error:', err);
-          return await message.reply(`❌ Failed to load command '${cmdName}'.\nReason: ${err.message}`);
-        }
+      else if (subcmd === 'unload') {
+  const cmdName = args[1];
+  if (!cmdName) return await message.reply('❌ Specify a command name to unload.');
+
+  const jsFilePath = path.join(cmdFolder, cmdName + '.js');
+  const txtFilePath = path.join(cmdFolder, cmdName + '.txt');
+
+  if (!fs.existsSync(jsFilePath)) return await message.reply('❌ Command .js file not found.');
+
+  try {
+    clearRequireCache(jsFilePath);
+    commands.delete(cmdName.toLowerCase());
+    for (const [alias, cmd] of commands.entries()) {
+      if (cmd.name.toLowerCase() === cmdName.toLowerCase()) {
+        commands.delete(alias);
       }
+    }
+
+    fs.renameSync(jsFilePath, txtFilePath);
+    return await message.reply(`✅ Command '${cmdName}' unloaded.`);
+  } catch (err) {
+    console.error('Unload Command Error:', err);
+    return await message.reply(`❌ Failed to unload '${cmdName}'.\nReason: ${err.message}`);
+  }
+}
+
+else if (subcmd === 'load') {
+  const cmdName = args[1];
+  if (!cmdName) return await message.reply('❌ Specify a command name to load.');
+
+  let jsPath = path.join(cmdFolder, cmdName + '.js');
+  const txtPath = path.join(cmdFolder, cmdName + '.txt');
+
+  if (!fs.existsSync(jsPath)) {
+    if (fs.existsSync(txtPath)) {
+      try {
+        fs.renameSync(txtPath, jsPath); 
+      } catch (err) {
+        return await message.reply(`❌ Failed to rename .txt to .js\nReason: ${err.message}`);
+      }
+    } else {
+      return await message.reply('❌ Command file not found.');
+    }
+  }
+
+  try {
+    clearRequireCache(jsPath);
+    const cmd = require(jsPath);
+    if (!registerCommand(cmd)) throw new Error('Invalid command format');
+    return await message.reply(`✅ Command '${cmdName}' loaded successfully.`);
+  } catch (err) {
+    console.error('Load Command Error:', err);
+    return await message.reply(`❌ Failed to load command '${cmdName}'.\nReason: ${err.message}`);
+  }
+}
+
 
       else {
-        return await message.reply('❌ Unknown subcommand. Use install, loadall, or load.');
+        return await message.reply('❌ Unknown subcommand. Use install, loadall, unload or load.');
       }
 
     } catch (err) {
