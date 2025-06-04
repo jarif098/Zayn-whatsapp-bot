@@ -1,6 +1,4 @@
-
 const Canvas = require('canvas');
-
 const axios = require('axios');
 
 function roundRect(ctx, x, y, width, height, radius) {
@@ -27,7 +25,6 @@ function roundRect(ctx, x, y, width, height, radius) {
   ctx.stroke();
 }
 
-
 module.exports = {
   name: 'rank',
   version: "3.1",
@@ -52,10 +49,10 @@ module.exports = {
       let anonCounter = 1;
 
       const users = await Promise.all(participants.map(async (p) => {
-        const id = `${groupId}_${p.id}`;
+        const id = `${p.id}`; 
         const user = userData.find(u => u.id === id) || { data: { msgCount: 0 } };
 
-        let displayName = p.notify || p.pushName;
+        let displayName = p.notify || p.pushName || mentionedJid;
         if (!displayName) {
           try {
             const profile = await sock.fetchStatus(p.id).catch(() => null);
@@ -89,7 +86,6 @@ module.exports = {
         return;
       }
 
-      // Handle rank command
       const targetJid = mentionedJid || senderJid;
       const rankIndex = users.findIndex(u => u.jid === targetJid);
       const userRank = rankIndex !== -1 ? rankIndex + 1 : "N/A";
@@ -119,7 +115,6 @@ module.exports = {
 
 async function generateRankCard(sock, msg, userDataEntry, targetJid, userRank, totalUsers, level, currentXP, requiredXP, targetName) {
   try {
-    // Load avatar with fallback
     let avatarImg;
     try {
       let avatarUrl = await sock.profilePictureUrl(targetJid, 'image').catch(() => null);
@@ -131,13 +126,11 @@ async function generateRankCard(sock, msg, userDataEntry, targetJid, userRank, t
       avatarImg = await Canvas.loadImage(fallback.data);
     }
 
-    // Canvas setup
     const width = 1600;
     const height = 500;
     const canvas = Canvas.createCanvas(width, height);
     const ctx = canvas.getContext('2d');
 
-    // Background gradient
     const bgGradient = ctx.createRadialGradient(width / 2, height / 2, 0, width / 2, height / 2, Math.max(width, height));
     bgGradient.addColorStop(0, '#1a0066');
     bgGradient.addColorStop(0.3, '#0d0033');
@@ -146,7 +139,6 @@ async function generateRankCard(sock, msg, userDataEntry, targetJid, userRank, t
     ctx.fillStyle = bgGradient;
     ctx.fillRect(0, 0, width, height);
 
-    // Background particles
     ctx.fillStyle = '#ffffff08';
     for (let i = 0; i < 80; i++) {
       const x = (i * 37) % width;
@@ -157,7 +149,6 @@ async function generateRankCard(sock, msg, userDataEntry, targetJid, userRank, t
       ctx.fill();
     }
 
-    // Glass card
     const cardGradient = ctx.createLinearGradient(0, 0, 0, height);
     cardGradient.addColorStop(0, '#ffffff20');
     cardGradient.addColorStop(0.5, '#ffffff15');
@@ -234,12 +225,12 @@ async function generateRankCard(sock, msg, userDataEntry, targetJid, userRank, t
     ctx.shadowBlur = 0;
 
     // Rank display as "3/14"
-    ctx.font = 'bold 44px sans-serif';
-    ctx.fillStyle = '#FFD700';
+    ctx.font = 'bold 55px sans-serif';
+    ctx.fillStyle = levelGradient;
     ctx.textAlign = 'center';
-    ctx.shadowColor = '#FF8800';
+    ctx.shadowColor = levelGradient;
     ctx.shadowBlur = 10;
-    ctx.fillText(`${userRank}/${totalUsers}`, width - 120, height - 80);
+    ctx.fillText(`${userRank}/${totalUsers}`, width - 180, height - 100);
     ctx.shadowBlur = 0;
 
     // Divider line
@@ -261,27 +252,27 @@ async function generateRankCard(sock, msg, userDataEntry, targetJid, userRank, t
     const barWidth = 900;
     const barHeight = 40;
     const barX = (width / 2) - (barWidth / 2);
-    const barY = height - 80;
+    const barY = height - 130;
     const progress = Math.min(currentXP / requiredXP, 1);
 
-    ctx.font = 'bold 34px sans-serif';
+    // XP text
+    ctx.font = 'bold 40px sans-serif';
     ctx.fillStyle = '#E8E8E8';
     ctx.textAlign = 'center';
     ctx.shadowColor = '#000000';
     ctx.shadowBlur = 4;
-    ctx.fillText(`EXP: ${currentXP.toLocaleString()} / ${requiredXP.toLocaleString()}`, width / 2, barY - 20);
+    ctx.fillText(`EXP: ${currentXP.toLocaleString()} / ${requiredXP.toLocaleString()}`, width / 2, barY - 50);
     ctx.shadowBlur = 0;
 
+    // XP bar background
     ctx.fillStyle = '#1a1a1a';
-    ctx.strokeStyle = '#444444';
     ctx.lineWidth = 2;
-    roundRect(ctx, barX, barY, barWidth, barHeight, 22);
+    roundRect(ctx, barX, barY, barWidth, barHeight, 22, barY - 40);
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = '#000000';
-    roundRect(ctx, barX + 2, barY + 2, barWidth - 4, 8, 20);
-    ctx.fill();
+
+    // XP bar fill
     const xpGradient = ctx.createLinearGradient(barX, barY, barX + barWidth, barY);
     xpGradient.addColorStop(0, '#00FFAA');
     xpGradient.addColorStop(0.3, '#00DDFF');
@@ -294,6 +285,7 @@ async function generateRankCard(sock, msg, userDataEntry, targetJid, userRank, t
     ctx.fill();
     ctx.shadowBlur = 0;
 
+    // Shine effect
     const shineGradient = ctx.createLinearGradient(barX, barY, barX, barY + barHeight);
     shineGradient.addColorStop(0, '#ffffff50');
     shineGradient.addColorStop(0.3, '#ffffff30');
@@ -302,10 +294,11 @@ async function generateRankCard(sock, msg, userDataEntry, targetJid, userRank, t
     roundRect(ctx, barX, barY, barWidth * progress, barHeight / 2, 22);
     ctx.fill();
 
+    // Send rank card
     const buffer = canvas.toBuffer();
     await sock.sendMessage(msg.key.remoteJid, {
       image: buffer,
-      caption: `🏆 **RANK CARD** 🏆\n👤 **${displayName}**\n⭐ **Level ${level}** | 🏅 **Rank ${userRank}/${totalUsers}**\n🔥 **${currentXP.toLocaleString()} XP** | 🎯 **${((progress * 100).toFixed(1))}% to next level**`,
+      caption: `🏆 *RANK CARD* 🏆\n👤 *${displayName}*\n⭐ *Level ${level}* | 🏅 *Rank ${userRank}/${totalUsers}*\n🔥 *${currentXP.toLocaleString()} XP* | 🎯 *${((progress * 100).toFixed(1))}% to next level*`,
       mentions: [targetJid],
     }, { quoted: msg });
 
@@ -315,13 +308,14 @@ async function generateRankCard(sock, msg, userDataEntry, targetJid, userRank, t
   }
 }
 
-async function generateTopCard(sock, msg, topUsers, groupName, topCount) {
+async function generateTopCard(sock, msg, topUsers, groupName, topCount, position = "top-left") {
   try {
     const width = 1500;
     const height = Math.max(700, 180 + (topUsers.length * 90));
     const canvas = Canvas.createCanvas(width, height);
     const ctx = canvas.getContext('2d');
 
+    // Background radial gradient + stars (unchanged)
     const bgGradient = ctx.createRadialGradient(width / 2, height / 2, 0, width / 2, height / 2, Math.max(width, height));
     bgGradient.addColorStop(0, '#2a0860');
     bgGradient.addColorStop(0.5, '#1a0340');
@@ -339,16 +333,7 @@ async function generateTopCard(sock, msg, topUsers, groupName, topCount) {
       ctx.fill();
     }
 
-    const cardGradient = ctx.createLinearGradient(0, 0, 0, height);
-    cardGradient.addColorStop(0, '#ffffff25');
-    cardGradient.addColorStop(1, '#ffffff15');
-    ctx.fillStyle = cardGradient;
-    ctx.strokeStyle = '#ffffff40';
-    ctx.lineWidth = 4;
-    roundRect(ctx, 30, 30, width - 60, height - 60, 35);
-    ctx.fill();
-    ctx.stroke();
-
+    // Title and Group Name fixed top center
     ctx.font = 'bold 56px "Arial Black", sans-serif';
     ctx.fillStyle = '#FFD700';
     ctx.textAlign = 'center';
@@ -365,15 +350,57 @@ async function generateTopCard(sock, msg, topUsers, groupName, topCount) {
     ctx.fillText(displayGroupName, width / 2, 150);
     ctx.shadowBlur = 0;
 
+    // Card fixed position and size
+    const cardX = 30;
+    const cardY = 30;
+    const cardWidth = width - 60;
+    const cardHeight = height - 60;
+
+    // Draw card bubble
+    const cardGradient = ctx.createLinearGradient(0, 0, 0, cardHeight);
+    cardGradient.addColorStop(0, '#ffffff25');
+    cardGradient.addColorStop(1, '#ffffff15');
+    ctx.fillStyle = cardGradient;
+    ctx.strokeStyle = '#ffffff40';
+    ctx.lineWidth = 4;
+    roundRect(ctx, cardX, cardY, cardWidth, cardHeight, 35);
+    ctx.fill();
+    ctx.stroke();
+
+    // Determine user list start position inside card based on "position"
+    let paddingLeft, paddingTop;
     const avatarSize = 70;
-    const paddingTop = 180;
-    const paddingLeft = 80;
     const spacingY = 90;
+    const totalListHeight = topUsers.length * spacingY;
+
+    switch (position) {
+      case "top-left":
+        paddingLeft = cardX + 120;
+        paddingTop = cardY + 130;
+        break;
+      case "top-right":
+        paddingLeft = cardX + cardWidth - 450;
+        paddingTop = cardY + 60;
+        break;
+      case "bottom-left":
+        paddingLeft = cardX + 50;
+        paddingTop = cardY + cardHeight - totalListHeight - 30;
+        break;
+      case "bottom-right":
+        paddingLeft = cardX + cardWidth - 450;
+        paddingTop = cardY + cardHeight - totalListHeight - 30;
+        break;
+      default:
+        paddingLeft = cardX + 50;
+        paddingTop = cardY + 60;
+    }
 
     for (let i = 0; i < topUsers.length; i++) {
       const user = topUsers[i];
       const yPos = paddingTop + i * spacingY;
+      const xPos = paddingLeft;
 
+      // Load avatar image
       let avatarImg;
       try {
         let avatarUrl = await sock.profilePictureUrl(user.jid, 'image').catch(() => null);
@@ -385,37 +412,40 @@ async function generateTopCard(sock, msg, topUsers, groupName, topCount) {
         avatarImg = await Canvas.loadImage(fallback.data);
       }
 
+      
       ctx.save();
       ctx.beginPath();
-      ctx.arc(paddingLeft + avatarSize / 2, yPos + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
+      ctx.arc(xPos + avatarSize / 2, yPos + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
       ctx.closePath();
       ctx.clip();
-      ctx.drawImage(avatarImg, paddingLeft, yPos, avatarSize, avatarSize);
+      ctx.drawImage(avatarImg, xPos, yPos, avatarSize, avatarSize);
       ctx.restore();
 
+     
+
+      // Display name
       let displayName = user.jid.split('@')[0];
       try {
         const contact = sock.contacts[user.jid] || (await sock.onWhatsApp(user.jid))[0];
         if (contact?.notify) displayName = contact.notify;
       } catch {}
-
-      if (displayName.length > 20) {
-        displayName = displayName.substring(0, 17) + '...';
-      }
+      if (displayName.length > 20) displayName = displayName.substring(0, 17) + '...';
 
       ctx.font = 'bold 32px "Arial Black", sans-serif';
       ctx.textAlign = 'left';
       ctx.fillStyle = '#FFFFFF';
       ctx.shadowColor = '#000000';
       ctx.shadowBlur = 6;
-      ctx.fillText(displayName, paddingLeft + avatarSize + 30, yPos + avatarSize / 2 + 12);
+      ctx.fillText(displayName, xPos + avatarSize + 30, yPos + avatarSize / 2 + 12);
       ctx.shadowBlur = 0;
 
+      // Rank number
       ctx.font = 'bold 40px sans-serif';
       ctx.fillStyle = i === 0 ? '#FFD700' : i === 1 ? '#C0C0C0' : i === 2 ? '#CD7F32' : '#AAAAAA';
       ctx.textAlign = 'right';
-      ctx.fillText(`${i + 1}`, paddingLeft - 30, yPos + avatarSize / 2 + 15);
+      ctx.fillText(`${i + 1}`, xPos - 30, yPos + avatarSize / 2 + 15);
 
+      // Level and message count on right side of card bubble
       const level = Math.floor(Math.sqrt(user.msgCount / 5));
       const msgCountText = `Messages: ${user.msgCount.toLocaleString()}`;
       const levelText = `Level: ${level}`;
@@ -423,15 +453,16 @@ async function generateTopCard(sock, msg, topUsers, groupName, topCount) {
       ctx.font = '28px sans-serif';
       ctx.textAlign = 'right';
       ctx.fillStyle = '#00FFAA';
-      ctx.fillText(levelText, width - 150, yPos + avatarSize / 2 - 8);
+      ctx.fillText(levelText, cardX + cardWidth - 120, yPos + avatarSize / 2 - 8);
       ctx.fillStyle = '#FFFFFF';
-      ctx.fillText(msgCountText, width - 150, yPos + avatarSize / 2 + 28);
+      ctx.fillText(msgCountText, cardX + cardWidth - 120, yPos + avatarSize / 2 + 28);
     }
+
 
     const buffer = canvas.toBuffer();
     await sock.sendMessage(msg.key.remoteJid, {
       image: buffer,
-      caption: `🏆 Top ${topCount} users in **${displayGroupName}**`,
+      caption: `🏆 Top ${topCount} users in *${displayGroupName}*`,
       mentions: topUsers.map(u => u.jid),
     }, { quoted: msg });
 
