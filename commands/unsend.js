@@ -1,36 +1,41 @@
 module.exports = {
   name: "unsend",
-  version: "1.0",
-  author: "JARiF",
+  version: "2.1",
+  author: "TawsiN | JARiF",
   aliases: ["delete", "remove"],
   role: 1,
-  description: "Unsend (delete) the replied message.",
-  noPrefix: true,
+  description: "Unsend (delete) the replied message. Only works for your own messages.",
+  noPrefix: false,
   category: "UTILITY",
 
   zayn: async ({ sock, msg }) => {
     const chatId = msg.key.remoteJid;
-    const isGroup = chatId.endsWith("@g.us");
 
-    if (!msg.message?.extendedTextMessage?.contextInfo?.stanzaId) {
-      await sock.sendMessage(chatId, { text: "❌ Please reply to the message you want to unsend." }, { quoted: msg });
+    const context = msg.message?.extendedTextMessage?.contextInfo;
+    const stanzaId = context?.stanzaId;
+    const participant = context?.participant;
+
+    if (!stanzaId) {
+      await sock.sendMessage(chatId, {
+        text: "❌ Please reply to a message you want to unsend."
+      }, { quoted: msg });
       return;
     }
 
-    const targetMsgKey = {
+    const messageKey = {
       remoteJid: chatId,
-      fromMe: false, 
-      id: msg.message.extendedTextMessage.contextInfo.stanzaId,
-      participant: isGroup
-        ? msg.message.extendedTextMessage.contextInfo.participant
-        : undefined
+      id: stanzaId,
+      fromMe: true,
+      participant: chatId.endsWith("@g.us") ? participant : undefined
     };
 
     try {
-      await sock.sendMessage(chatId, { delete: targetMsgKey });
+      await sock.sendMessage(chatId, { delete: messageKey });
     } catch (err) {
-      console.error("Failed to unsend message:", err);
-      await sock.sendMessage(chatId, { text: "❌ Failed to unsend the message. It may not be deletable." }, { quoted: msg });
+      console.error("❌ Failed to delete message:", err);
+      await sock.sendMessage(chatId, {
+        text: "❌ Can't unsend this message. It must be your own and recent."
+      }, { quoted: msg });
     }
   }
 };
