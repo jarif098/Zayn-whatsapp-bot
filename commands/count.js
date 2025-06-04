@@ -18,7 +18,7 @@ module.exports = {
     }
 
     function getMsgCount(userJid) {
-      const id = `${groupId}_${userJid}`;
+      const id = `${userJid}`;
       const user = userData.find(u => u.id === id);
       return user?.data?.msgCount || 0;
     }
