@@ -45,7 +45,7 @@ if (!adminJid) {
     } catch (err) {
       console.error("Push monitor error:", err.message);
     }
-  }, 30 * 1000); // Check every 30s
+  }, 30 * 1000); 
 
   console.log("📡 Push monitor started.");
 };
