@@ -1,7 +1,7 @@
 {
   "name": "zayn-whatsapp-bot",
   "author": "jarif098",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "main": "index.js",
   "type": "commonjs",
   "dependencies": {
