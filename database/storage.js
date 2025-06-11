@@ -96,32 +96,49 @@ async function loadTable(tableName) {
 }
 
 async function saveTable(tableName, data) {
-  await runSQL(`DELETE FROM ${tableName}`);
   let insertSQL = '';
+  let makeParams;
+
   if (tableName === 'userMoney') {
-    insertSQL = `INSERT INTO userMoney (id, money, msgCount) VALUES (?, ?, ?)`;
+    insertSQL = `
+      INSERT INTO userMoney (id, money, msgCount)
+      VALUES (?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        money = excluded.money,
+        msgCount = excluded.msgCount
+    `;
+    makeParams = (item) => [item.id, item.money ?? 0, item.msgCount ?? 0];
   } else if (tableName === 'userData') {
-    insertSQL = `INSERT INTO userData (id, data) VALUES (?, ?)`;
+    insertSQL = `
+      INSERT INTO userData (id, data)
+      VALUES (?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        data = excluded.data
+    `;
+    makeParams = (item) => [item.id, JSON.stringify(item.data)];
   } else if (tableName === 'prefixesData') {
-    insertSQL = `INSERT INTO prefixesData (id, prefix) VALUES (?, ?)`;
+    insertSQL = `
+      INSERT INTO prefixesData (id, prefix)
+      VALUES (?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        prefix = excluded.prefix
+    `;
+    makeParams = (item) => [item.id, item.prefix];
   } else if (tableName === 'groupSettings') {
-    insertSQL = `INSERT INTO groupSettings (id, settings) VALUES (?, ?)`;
+    insertSQL = `
+      INSERT INTO groupSettings (id, settings)
+      VALUES (?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        settings = excluded.settings
+    `;
+    makeParams = (item) => [item.id, item.settings];
   }
 
   for (const item of data) {
-    let params;
-    if (tableName === 'userMoney') {
-      params = [item.id, item.money ?? 0, item.msgCount ?? 0];
-    } else if (tableName === 'userData') {
-      params = [item.id, JSON.stringify(item.data)];
-    } else if (tableName === 'prefixesData') {
-      params = [item.id, item.prefix];
-    } else if (tableName === 'groupSettings') {
-      params = [item.id, item.settings];
-    }
-    await runSQL(insertSQL, params);
+    await runSQL(insertSQL, makeParams(item));
   }
 }
+
 
 // ======= MongoDB =========
 
@@ -192,6 +209,9 @@ async function initJSON() {
 }
 
 function saveJSON(key) {
+  if (!dataCache[key]) {
+    dataCache[key] = [];
+  }
   const filePath = path.join(jsonDir, `${key}.json`);
   fs.writeFileSync(filePath, JSON.stringify(dataCache[key], null, 2));
 }
@@ -204,6 +224,14 @@ async function getData(key) {
 }
 
 async function saveData(key) {
+  if (!key || !(key in dataCache)) {
+    throw new Error(`saveData: Invalid key "${key}" or key not loaded.`);
+  }
+
+  if (!Array.isArray(dataCache[key])) {
+    dataCache[key] = [];
+  }
+
   const storeType = config.storeType.toLowerCase();
   if (storeType === 'sqlite') {
     await saveTable(key, dataCache[key]);
@@ -213,6 +241,7 @@ async function saveData(key) {
     saveJSON(key);
   }
 }
+
 
 // ======= Message Counting =========
 
