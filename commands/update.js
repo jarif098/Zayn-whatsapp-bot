@@ -17,7 +17,7 @@ module.exports = {
 
   zayn: async function ({ sock, msg, message, zaynReply, removeReply }) {
     const repoPath = path.resolve(__dirname, "..");
-    const backupRoot = path.resolve(repoPath, "../backup");
+    const backupRoot = path.resolve("../backup");
     const tempPath = path.join(os.tmpdir(), "zayn-update-temp");
 
     function fetchJSON(url) {
