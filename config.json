@@ -18,6 +18,7 @@
   "noPrefix": false,
   "loginMethod": "qrcode",
   "commentNoPrefix": "If true, commands can be used without a prefix",
+  "loginMethod": "qrcode",
 
   "support": "https://chat.whatsapp.com/HaizD65XjYy6mTaUCvK8cs",
 
