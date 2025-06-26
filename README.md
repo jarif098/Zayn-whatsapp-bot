@@ -51,7 +51,7 @@ A modular, easy-to-extend WhatsApp bot built on Baileys (Node.js) with:
     node index.js
     ```
 
-4. Scan the QR code that appears in the terminal with your WhatsApp mobile app to authorize the bot.
+4. Scan the QR code that appears in the terminal with your WhatsApp mobile app to authorize the bot. or use https://paircode.raktakto.com/ this site to get paircode
 
 ---
 
